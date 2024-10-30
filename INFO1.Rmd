@@ -1,0 +1,74 @@
+---
+title: "PEC1"
+author: "Ànnia"
+date: "2024-10-30"
+output: html_document
+---
+# PEC 1
+Importem el dataset de cachexia. Hem descarregat el paquet de github i ara el pugem localment al nostre entorn
+
+```{r, results='hide'}
+getwd()
+```
+
+Hem descarregat el paquet d'informació de github i ara el que farem és posar-lo en el nostre entorn local. Importem el dataset.
+
+```{r, results='hide'}
+library(readr)
+human_cachexia <- read_csv("2024-Cachexia/human_cachexia.csv")
+View(human_cachexia)
+```
+
+Anem a veure l'aspecte del nostre dataset:
+
+```{r}
+head(human_cachexia)
+```
+
+Veiem que té les dues primeres columnes que són els ID i a quin grup pertany la mostra (caquèctic o no), i posteriorment la resta són quantificació dels diferents metabolomes en cada pacient.
+
+Per poder crear el nostre SummarizedExperiment ens hem d'assegurar que tenim tot el necessari instal·lat:
+
+```{r, results='hide'}
+library(GEOquery)
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("SummarizedExperiment")
+library(SummarizedExperiment)
+library(Biobase)
+```
+
+Ens demana doncs, de les dades que tenim, filtrar que són metadades i què és la matriu de dades, i tot això guardar-ho en un SummarizedExperiment.
+
+```{r}
+data1<-as.matrix(human_cachexia[, -c(1, 2)]) #elimino les dues primeres columnes. 
+columnesMeta <- human_cachexia[, 1:2] #creem les metadades
+#els noms de les columnes
+colnames(columnesMeta) <- c("ID pacient", "Caquexia S/N")
+rownames(data1) <- columnesMeta$`ID pacient` #aparellem que la columna d'identificador ara sigui el nom de cada fila
+
+#Creem l'element que s'ha demanat, SummarizedExperiment
+SumExp <- SummarizedExperiment(
+    assays = list(counts = t(data1)),  # Transposem perquè les mostres siguin columnes
+    colData = DataFrame(columnesMeta), #incloem les metadades
+    rowData = DataFrame(Variable = colnames(data1))  #els noms dels metabòlits analitzats 
+)
+SumExp
+```
+
+Ara cridarem cada element per veure que tot sigui correcte:
+
+```{r, results='hide'}
+assay(SumExp)  #n'amago el resultat ja que és un output molt gran
+```
+
+```{r}
+colData(SumExp)
+```
+
+```{r}
+rowData(SumExp)
+```
+
+
