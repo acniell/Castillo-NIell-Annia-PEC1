@@ -17,6 +17,7 @@ Hem descarregat el paquet d'informació de github i ara el que farem és posar-l
 library(readr)
 human_cachexia <- read_csv("2024-Cachexia/human_cachexia.csv")
 View(human_cachexia)
+dim(human_cachexia) i 
 ```
 
 Anem a veure l'aspecte del nostre dataset:
@@ -33,8 +34,8 @@ Per poder crear el nostre SummarizedExperiment ens hem d'assegurar que tenim tot
 library(GEOquery)
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-
 BiocManager::install("SummarizedExperiment")
+BiocManager::install("mixOmics")
 library(SummarizedExperiment)
 library(Biobase)
 ```
@@ -45,7 +46,7 @@ Ens demana doncs, de les dades que tenim, filtrar que són metadades i què és 
 data1<-as.matrix(human_cachexia[, -c(1, 2)]) #elimino les dues primeres columnes. 
 columnesMeta <- human_cachexia[, 1:2] #creem les metadades
 #els noms de les columnes
-colnames(columnesMeta) <- c("ID pacient", "Caquexia S/N")
+colnames(columnesMeta) <- c("ID pacient", "Muscle loss")
 rownames(data1) <- columnesMeta$`ID pacient` #aparellem que la columna d'identificador ara sigui el nom de cada fila
 
 #Creem l'element que s'ha demanat, SummarizedExperiment
@@ -66,9 +67,125 @@ assay(SumExp)  #n'amago el resultat ja que és un output molt gran
 ```{r}
 colData(SumExp)
 ```
+Hem vist les metadades. 
 
 ```{r}
 rowData(SumExp)
 ```
+La informació de les variables metabòlits. 
 
 
+# 2.1 EXPLORACIÓ DE LES DADES - INFORMACIÓ BÀSICA
+
+Ja ho hem vist força quan hem muntat SummarizedExperiment però anem a veure com s'estructuren, si hi ha missing values, etc.
+
+```{r}
+dim(SumExp)
+```
+Tenim 63 files i 77 columnes. 
+
+```{r}
+head(assay(SumExp))
+```
+Veiem les 6 primeres files. 
+
+```{r}
+head(colData(SumExp))
+```
+Veiem l'inici de les metadades.
+
+Abans de seguir, mirem si hi ha missing values. 
+```{r}
+any(is.na(data1))
+```
+No n'hi han pel que de moment podem seguir endavant. 
+
+Anem a mirar un resum:
+```{r}
+summary(assay(SumExp))
+```
+Aquest resum ens dóna per cada individu/mostra, uns valors bàsics de les determinacions de metatbòlits (en conjunt). Realment sembla poc útil aquest resum. 
+Anem a veure des d'una altra persperctiva, i és mirar metabòlit per metabòlit aquests mateixos valors.
+
+```{r}
+apply(assay(SumExp), 1, summary)
+```
+```{r}
+str(SumExp)
+```
+
+Anem a mirar quants control i caquètics hi ha: 
+```{r}
+caquec<-table(human_cachexia$`Muscle loss`)
+comptador_caquec<-caquec["cachexic"]
+comptador_control<-sum(caquec)-comptador_caquec
+cat("Nombre de pacients caquèctics:", comptador_caquec, "\n")
+cat("Nombre de pacients control:", comptador_control["cachexic"], "\n")
+```
+
+Anem a veure-ho gràficament, comparant els caquètics i control.
+```{r}
+par(mfrow=c(2, 4))  
+for (i in 1:63) {  
+  boxplot(data1[, i] ~ columnesMeta$`Muscle loss`,
+          main = colnames(data1)[i],  # Nom del metabolit
+          xlab = "Pèrdua muscular",
+          ylab = "Expressió",
+          col = c("cadetblue3", "coral"),
+          border ="darkgreen")
+}
+par(mfrow=c(1, 1)) 
+```
+Això és complicat i poc útil perquè he hagut de generar 63 gràfics per veure com es comporta cada metabòlit en funció de si el pacient està caquèctic o no. Alguns però ja mostren que no varien entre els dos grups, i alguns sí, que és el que anirem a buscar. 
+
+Mirem amb un gràfic de densitat:
+
+```{r}
+plot(density(data1[, 1]), main = "Metabòlits", xlab = "Expressió", ylab = "Densitat", col = "blue", lwd = 2)
+#generem un bucle per representar tots els metabòlits
+for (i in 2:ncol(data1)) {
+  lines(density(data1[, i]), col = i, lwd = 2)  }
+```
+De nou, molt saturat i poc útil. Tot i així, veiem que sí que hi podrien haver valors extrems. Podríem plantejar una transformació logarítmica de les dades.
+
+```{r}
+log2<- log2(assays(SumExp)$counts + 1)
+plot(density(log2[, 1]), main = "Metabòlits (log2)", xlab = "Expressió (log2)", ylab = "Densitat", col = "blue", lwd = 2)
+#repetim bucle anterior
+for (i in 2:ncol(log2)) {
+  lines(density(log2[, i]), col = i, lwd = 2) 
+}
+```
+Encara hi ha una cua a la dreta però els valors estan més centrats. Tot i així, encara hi ha valors extrems, cosa a tenir en compte de cares a la normalització dels valors. Necessitem un mètode que sigui resistent a aquests; farem servir el de la mediana. Primer normalitzarem i després aplicarem la transformació logarítmica, ja que el gràfic post normalització encara suggereix que es podria beneficiar de la logarítmica. 
+
+```{r}
+# Normalització per mediana
+norm_mediana <- apply(assays(SumExp)$counts, 2, median, na.rm = TRUE)  # Calcula la mediana per cada mostra
+dataset_normalitzat <- assays(SumExp)$counts / norm_mediana * median(norm_mediana)  # Normalitza les dades
+plot(density(dataset_normalitzat[, 1]), main = "Metabòlits normalitzats", xlab = "Expressió (log2)", ylab = "Densitat", col = "blue", lwd = 2)
+#repetim bucle anterior
+for (i in 2:ncol(dataset_normalitzat)) {
+  lines(density(dataset_normalitzat[, i]), col = i, lwd = 2) 
+}
+log2_dataset_normalitzat<- log2(dataset_normalitzat + 1)  
+```
+
+# 2.2 ANÀLISI DE PCA
+Fins ara hem estat intentant fer representació gràfica i anàlisi de 63 metabòlits diferents (i 77 entrades de cada un), cosa molt farregosa i que ens dificulta fer l'anàlisi de dades. L'anàlisi de PCA en permetrà reduir aquesta gran dimensió de les dades i combinar les variables per generar les components principals, no perdent excessiva informació en el procés. 
+A més, esperem que així poguem identificar diferents patrons segons si pertanyen al grup de control o caquèxia. 
+
+```{r}
+
+
+Anem a fer l'anàlisi de components principals. 
+
+
+4. Visualització:
+
+hist(assay(SumExp)): Crea un histograma de la distribució de les dades d'expressió.
+boxplot(assay(SumExp)): Crea un diagrama de caixa per visualitzar la distribució de les dades d'expressió per a cada mostra.
+plot(density(assay(SumExp))): Crea un gràfic de densitat de la distribució de les dades d'expressió.
+Consells addicionals:
+
+Pots utilitzar la funció table() per obtenir la freqüència de les categories a la teva variable Caquexia S/N.
+Si vols explorar la relació entre l'expressió dels metabòlits i la variable Caquexia S/N, pots utilitzar diagrames de dispersió (plot()), diagrames de caixa (boxplot()) o proves estadístiques com la prova t (t.test()).
