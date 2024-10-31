@@ -3,21 +3,28 @@ title: "PEC1"
 author: "Ànnia"
 date: "2024-10-30"
 output: html_document
+editor_options: 
+  markdown: 
+    wrap: sentence
 ---
+
 # PEC 1
-Importem el dataset de cachexia. Hem descarregat el paquet de github i ara el pugem localment al nostre entorn
+
+Importem el dataset de cachexia.
+Hem descarregat el paquet de github i ara el pugem localment al nostre entorn
 
 ```{r, results='hide'}
 getwd()
 ```
 
-Hem descarregat el paquet d'informació de github i ara el que farem és posar-lo en el nostre entorn local. Importem el dataset.
+Hem descarregat el paquet d'informació de github i ara el que farem és posar-lo en el nostre entorn local.
+Importem el dataset.
 
 ```{r, results='hide'}
 library(readr)
 human_cachexia <- read_csv("2024-Cachexia/human_cachexia.csv")
 View(human_cachexia)
-dim(human_cachexia) i 
+dim(human_cachexia)
 ```
 
 Anem a veure l'aspecte del nostre dataset:
@@ -43,21 +50,22 @@ library(Biobase)
 Ens demana doncs, de les dades que tenim, filtrar que són metadades i què és la matriu de dades, i tot això guardar-ho en un SummarizedExperiment.
 
 ```{r}
-data1<-as.matrix(human_cachexia[, -c(1, 2)]) #elimino les dues primeres columnes. 
+x<-as.matrix(human_cachexia[, -c(1, 2)]) #elimino les dues primeres columnes. 
 columnesMeta <- human_cachexia[, 1:2] #creem les metadades
 #els noms de les columnes
 colnames(columnesMeta) <- c("ID pacient", "Muscle loss")
-rownames(data1) <- columnesMeta$`ID pacient` #aparellem que la columna d'identificador ara sigui el nom de cada fila
+rownames(x) <- columnesMeta$`ID pacient` #aparellem que la columna d'identificador ara sigui el nom de cada fila
 
 #Creem l'element que s'ha demanat, SummarizedExperiment
 SumExp <- SummarizedExperiment(
-    assays = list(counts = t(data1)),  # Transposem perquè les mostres siguin columnes
+    assays = list(counts = t(x)),  # Transposem perquè les mostres/individus siguin columnes
     colData = DataFrame(columnesMeta), #incloem les metadades
-    rowData = DataFrame(Variable = colnames(data1))  #els noms dels metabòlits analitzats 
+    rowData = DataFrame(Variable = colnames(x))  #els noms dels metabòlits analitzats 
 )
 SumExp
 ```
 
+Ens hem de fixar que de la matriu assay, cada columna és un individu i les files són els metabòlits.
 Ara cridarem cada element per veure que tot sigui correcte:
 
 ```{r, results='hide'}
@@ -67,68 +75,74 @@ assay(SumExp)  #n'amago el resultat ja que és un output molt gran
 ```{r}
 colData(SumExp)
 ```
-Hem vist les metadades. 
+
+Hem vist les metadades.
 
 ```{r}
 rowData(SumExp)
 ```
-La informació de les variables metabòlits. 
 
+La informació de les variables metabòlits.
 
+Ara el que farem és dividir en dues mostres, les que són control i les que tenen diagnosticada caquèxia.
+
+```{r}
+caquectic <- SumExp[, SumExp$Muscle.loss == "cachexic"]
+control <- SumExp[, SumExp$Muscle.loss == "control"]
+control
+caquectic
+```
+
+Per accedir posteriorment a les dades de cada subgrup farem servir: 
+```{r}
+assays(caquectic)$counts   
+assays(control)$counts
+```
 # 2.1 EXPLORACIÓ DE LES DADES - INFORMACIÓ BÀSICA
 
 Ja ho hem vist força quan hem muntat SummarizedExperiment però anem a veure com s'estructuren, si hi ha missing values, etc.
 
 ```{r}
 dim(SumExp)
+dim(caquectic)
+dim(control)
 ```
-Tenim 63 files i 77 columnes. 
 
-```{r}
-head(assay(SumExp))
-```
-Veiem les 6 primeres files. 
+Tenim 63 files i 77 columnes.
 
 ```{r}
 head(colData(SumExp))
 ```
+
 Veiem l'inici de les metadades.
 
-Abans de seguir, mirem si hi ha missing values. 
+Abans de seguir, mirem si hi ha missing values.
+
 ```{r}
-any(is.na(data1))
+any(is.na(x))
+any(is.na(caquectic))
+any(is.na(control))
 ```
-No n'hi han pel que de moment podem seguir endavant. 
+
+No n'hi han pel que de moment podem seguir endavant.
+Ho he recomprovat a tots els grups per hi havia hagut errors en la creació d'aquests.
 
 Anem a mirar un resum:
-```{r}
-summary(assay(SumExp))
-```
-Aquest resum ens dóna per cada individu/mostra, uns valors bàsics de les determinacions de metatbòlits (en conjunt). Realment sembla poc útil aquest resum. 
-Anem a veure des d'una altra persperctiva, i és mirar metabòlit per metabòlit aquests mateixos valors.
 
 ```{r}
-apply(assay(SumExp), 1, summary)
-```
-```{r}
-str(SumExp)
+summary(assays(caquectic)$counts)
 ```
 
-Anem a mirar quants control i caquètics hi ha: 
 ```{r}
-caquec<-table(human_cachexia$`Muscle loss`)
-comptador_caquec<-caquec["cachexic"]
-comptador_control<-sum(caquec)-comptador_caquec
-cat("Nombre de pacients caquèctics:", comptador_caquec, "\n")
-cat("Nombre de pacients control:", comptador_control["cachexic"], "\n")
+summary(assays(control)$counts)
 ```
-
 Anem a veure-ho gràficament, comparant els caquètics i control.
+
 ```{r}
 par(mfrow=c(2, 4))  
 for (i in 1:63) {  
-  boxplot(data1[, i] ~ columnesMeta$`Muscle loss`,
-          main = colnames(data1)[i],  # Nom del metabolit
+  boxplot(x[, i] ~ columnesMeta$`Muscle loss`,
+          main = colnames(x)[i],  # Nom del metabolit
           xlab = "Pèrdua muscular",
           ylab = "Expressió",
           col = c("cadetblue3", "coral"),
@@ -136,17 +150,23 @@ for (i in 1:63) {
 }
 par(mfrow=c(1, 1)) 
 ```
-Això és complicat i poc útil perquè he hagut de generar 63 gràfics per veure com es comporta cada metabòlit en funció de si el pacient està caquèctic o no. Alguns però ja mostren que no varien entre els dos grups, i alguns sí, que és el que anirem a buscar. 
+
+Això és complicat i poc útil perquè he hagut de generar 63 gràfics per veure com es comporta cada metabòlit en funció de si el pacient està caquèctic o no.
+Alguns però ja mostren que no varien entre els dos grups, i alguns sí, que és el que anirem a buscar.
 
 Mirem amb un gràfic de densitat:
 
 ```{r}
-plot(density(data1[, 1]), main = "Metabòlits", xlab = "Expressió", ylab = "Densitat", col = "blue", lwd = 2)
+x2 <- assay(SumExp, "counts")
+plot(density(x2[, 1]), main = "Metabòlits", xlab = "Expressió", ylab = "Densitat", col = "blue", lwd = 2)
 #generem un bucle per representar tots els metabòlits
-for (i in 2:ncol(data1)) {
-  lines(density(data1[, i]), col = i, lwd = 2)  }
+for (i in 2:ncol(x2)) {
+  lines(density(x2[, i]), col = i, lwd = 2)  }
 ```
-De nou, molt saturat i poc útil. Tot i així, veiem que sí que hi podrien haver valors extrems. Podríem plantejar una transformació logarítmica de les dades.
+
+De nou, molt saturat i poc útil.
+Tot i així, veiem que sí que hi podrien haver valors extrems.
+Podríem plantejar una transformació logarítmica de les dades.
 
 ```{r}
 log2<- log2(assays(SumExp)$counts + 1)
@@ -156,13 +176,18 @@ for (i in 2:ncol(log2)) {
   lines(density(log2[, i]), col = i, lwd = 2) 
 }
 ```
-Encara hi ha una cua a la dreta però els valors estan més centrats. Tot i així, encara hi ha valors extrems, cosa a tenir en compte de cares a la normalització dels valors. Necessitem un mètode que sigui resistent a aquests; farem servir el de la mediana. Primer normalitzarem i després aplicarem la transformació logarítmica, ja que el gràfic post normalització encara suggereix que es podria beneficiar de la logarítmica. 
+
+Encara hi ha una cua a la dreta però els valors estan més centrats.
+Tot i així, encara hi ha valors extrems, cosa a tenir en compte de cares a la normalització dels valors.
+Necessitem un mètode que sigui resistent a aquests; farem servir el de la mediana.
+Primer normalitzarem i després aplicarem la transformació logarítmica, ja que el gràfic post normalització encara suggereix que es podria beneficiar de la logarítmica.
 
 ```{r}
 # Normalització per mediana
 norm_mediana <- apply(assays(SumExp)$counts, 2, median, na.rm = TRUE)  # Calcula la mediana per cada mostra
 dataset_normalitzat <- assays(SumExp)$counts / norm_mediana * median(norm_mediana)  # Normalitza les dades
 plot(density(dataset_normalitzat[, 1]), main = "Metabòlits normalitzats", xlab = "Expressió (log2)", ylab = "Densitat", col = "blue", lwd = 2)
+
 #repetim bucle anterior
 for (i in 2:ncol(dataset_normalitzat)) {
   lines(density(dataset_normalitzat[, i]), col = i, lwd = 2) 
@@ -171,21 +196,90 @@ log2_dataset_normalitzat<- log2(dataset_normalitzat + 1)
 ```
 
 # 2.2 ANÀLISI DE PCA
-Fins ara hem estat intentant fer representació gràfica i anàlisi de 63 metabòlits diferents (i 77 entrades de cada un), cosa molt farregosa i que ens dificulta fer l'anàlisi de dades. L'anàlisi de PCA en permetrà reduir aquesta gran dimensió de les dades i combinar les variables per generar les components principals, no perdent excessiva informació en el procés. 
-A més, esperem que així poguem identificar diferents patrons segons si pertanyen al grup de control o caquèxia. 
+
+Fins ara hem estat intentant fer representació gràfica i anàlisi de 63 metabòlits diferents (i 77 entrades de cada un), cosa molt farregosa i que ens dificulta fer l'anàlisi de dades.
+L'anàlisi de PCA en permetrà reduir aquesta gran dimensió de les dades i combinar les variables per generar les components principals, no perdent excessiva informació en el procés.
+A més, esperem que així poguem identificar diferents patrons segons si pertanyen al grup de control o caquèxia.
+
+Comencem per escalar les nostres dades i centrar-les.
 
 ```{r}
+x3<-scale(t(log2_dataset_normalitzat), center = TRUE, scale = TRUE)
+#transposem per poder tenir els metabòltis a columnes. 
+PCA_calcul <- prcomp(x3, center = TRUE, scale. = TRUE)
+summary(PCA_calcul)
+```
 
+Una altra manera de visualitzar-ho seria fent servir el paquet de mixOmics:
 
-Anem a fer l'anàlisi de components principals. 
+```{r}
+library(mixOmics)
+PCA_tune<-tune.pca(x3, ncomp=10, scale=FALSE)
+plot(PCA_tune)
+```
 
+Veiem en el resultat que el PCA deixa molt a desitjar: la PC1 explica un 38% de la variància, la PC2 6.6% i la PC3 6%.
+No arribem a un \~70% fins a la PC8!.
+Amb la visualització de gràfic, podríem dir que ens podríem limitar a agafar fins a la segona o tercera component (això sí, tenint en compte que això implica que *NOMÉS* tindrem el 50% de la variància explicada) La primera component, òbviamen reté la màxima variabilitat de les dades.
+Anem a mirar les càrregues:
 
-4. Visualització:
+```{r}
+#seleccionem la variable dins de PCA_tune
+loads<-PCA_calcul$rotation
+loads2<-PCA_tune$loadings
+loads2
+loads
+```
 
-hist(assay(SumExp)): Crea un histograma de la distribució de les dades d'expressió.
-boxplot(assay(SumExp)): Crea un diagrama de caixa per visualitzar la distribució de les dades d'expressió per a cada mostra.
-plot(density(assay(SumExp))): Crea un gràfic de densitat de la distribució de les dades d'expressió.
-Consells addicionals:
+Ara veiem de cada metabòlit, quina contribució té a cada component.
 
-Pots utilitzar la funció table() per obtenir la freqüència de les categories a la teva variable Caquexia S/N.
-Si vols explorar la relació entre l'expressió dels metabòlits i la variable Caquexia S/N, pots utilitzar diagrames de dispersió (plot()), diagrames de caixa (boxplot()) o proves estadístiques com la prova t (t.test()).
+```{r}
+# Gràfic de càrregues per a tots els metabòlits en PC1 i PC2
+plot(loads[, 1], loads[, 2], 
+     xlab = "Load PC1", 
+     ylab = "Loads PC2", 
+     main = "Loads PC1 i PC2",
+     pch = 19, col = "purple")
+text(loads[, 1], loads[, 2], labels = rownames(loads), pos = 4, cex = 0.5)
+```
+
+## OBVIABLE
+
+Un segon gràfic per veure les càrregues dels metabòlits els components principals.
+
+```{r}
+library(factoextra)
+plot1<-fviz_pca_var(PCA_calcul, 
+              col.var = "cadetblue4", 
+              arrows = FALSE,    
+              label = "var",   
+              addEllipses = FALSE,
+             labelsize=2,
+             repel = TRUE
+) +
+  ggtitle("Pes dels Metabòlits a PC1 i 2") 
+plot1
+```
+
+## FI OBVIABLE
+
+## METABÒLITS MÉS INFLUENTS
+
+Ara seleccionarem de les 3 principals components, els metabòlits amb més pes d'aquestes.
+
+```{R}
+#primer selecciono les 3 primeres components
+PCAs <- loads[, 1:3]
+PCAs
+```
+
+```{r}
+#ara 
+PC1_top <- PCAs[order(abs(PCAs[, 1]), decreasing = TRUE), ]
+PC2_top <- PCAs[order(abs(PCAs[, 2]), decreasing = TRUE), ]
+PC3_top <- PCAs[order(abs(PCAs[, 3]), decreasing = TRUE), ]
+PC1_top
+PC2_top
+PC3_top
+head(PC1_top, 10)
+```
