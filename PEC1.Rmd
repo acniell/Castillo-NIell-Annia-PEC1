@@ -1,7 +1,9 @@
 ---
 title: "ANÀLISI DE DADES ÒMIQUES - PEC1"
 author: "Ànnia Castillo Niell"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -228,7 +230,7 @@ Anem a veure-ho gràficament, comparant els caquètics i control.
 
 #### Gràfic 1: boxplot comparatiu de cada metabòlit entre caquèctic i control {#gràfic-1-boxplot-comparatiu-de-cada-metabòlit-entre-caquèctic-i-control}
 
-```{r apartat_4.6}
+```{r apartat_4.6, fig.align='center'}
 par(mfrow=c(2, 4))  
 for (i in 1:63) {  
   boxplot(x[, i] ~ columnesMeta$`Muscle loss`,
@@ -247,7 +249,7 @@ Mirem amb un gràfic de densitat com es distribueixen les dades:
 
 #### Gràfic 2: Gràfic de densitat i distribució dels metabòlits {#gràfic-2-gràfic-de-densitat-i-distribució-dels-metabòlits}
 
-```{r apartat_4.7}
+```{r apartat_4.7, fig.align='center'}
 plot(density(dataset[, 1]), main = "Metabòlits", xlab = "Quantitat de metabòlit", ylab = "Densitat de probabilitat", col = "blue", lwd = 2)
 #generem un bucle per representar tots els metabòlits
 for (i in 2:ncol(dataset)) {
@@ -262,7 +264,7 @@ Procedim a fer la transformació logarítmica per intentar guanyar simetria i co
 
 #### Gràfic 3: Gràfic de densitat i distribució dels metabòlits amb la transformació logarítmica {#gràfic-3-gràfic-de-densitat-i-distribució-dels-metabòlits-amb-la-transformació-logarítmica}
 
-```{r apartat_4.8}
+```{r apartat_4.8, fig.align='center'}
 datasetLog2<- log2(assays(SumExp)$counts + 1)
 plot(density(datasetLog2[, 1]), main = "Metabòlits (log2)", xlab = "Expressió (log2)", ylab = "Densitat", col = "blue", lwd = 2)
 #repetim bucle anterior
@@ -295,9 +297,9 @@ PCA_calcul$x
 
 El resultat no és gaire encoratjador i veiem que la PC1 té només el 11% de la variabilitat, PC2 un 7.7%, pel que puja acumulat al 19%, i si incloem la tercera, puja l'acumulada fins al 25.9%. Una altra manera de visualitzar-ho seria fent servir el paquet de mixOmics:
 
-#### Gràfic 4: Variància explicada per cada PC {#gràfic-4-variància-explicada-per-cada-PC}(#variància-pca)
+#### Gràfic 4: Variància explicada per cada PC {#gràfic-4-variància-explicada-per-cada-PC}
 
-```{r apartat_5.2, results='hide', message=FALSE}
+```{r apartat_5.2, results='hide', message=FALSE, fig.align='center'}
 library(mixOmics)
 PCA_tune<-tune.pca(t(log2_dataset_normalitzat), ncomp=10, scale=FALSE) #triem que es vegin només les primeres 10 components
 plot(PCA_tune)
@@ -309,7 +311,7 @@ Representem les dues primeres components gràficament.
 
 #### Gràfic 5: Representació gràfica de PC1 i PC2 {#gràfic-5-representació-gràfica-de-PC1-i-PC2}
 
-```{r apartat_5.3, warning = FALSE}
+```{r apartat_5.3, warning = FALSE, fig.align='center'}
 #les coordenades de les components principals
 coord <- PCA_calcul$x
 #Ho passem a format dataframe
@@ -330,7 +332,7 @@ El gràfic podria insinuar que hi hagi diferències marcades entre els dos grups
 
 Anem a mirar-ho amb t test de Welch
 
-```{r apartat_5.4}
+```{r apartat_5.4, fig.align='center'}
 t_test_PC1 <- t.test(PC1 ~ Muscle_loss, data = PCA_resultat)
 t_test_PC1
 t_test_PC2 <- t.test(PC2 ~ Muscle_loss, data = PCA_resultat)
@@ -343,11 +345,12 @@ Veiem amb aquests resultats que: - PC1: no s'observa una diferència clarament s
 
 #### 5.1 CÀRREGUES DELS METABÒLITS A PC1 i PC2 {#càrregues-dels-metabòlits-a-pc1-i-pc2}
 
+
 Ara veiem de cada metabòlit, quina contribució té a cada component.
 
 #### Gràfic 6: Càrregues de PC1 i PC2 {#gràfic-6-càrregues-de-PC1-i-PC2} 
 
-```{r apartat_5.5}
+```{r apartat_5.5, fig.align='center'}
 loads <- PCA_calcul$rotation
 # Gràfic de càrregues per a tots els metabòlits en PC1 i PC2
 plot(loads[, 1], loads[, 2], 
@@ -369,7 +372,7 @@ data.frame(Metabolit = metabolits_PC2, Carrega_PC2 = loads[metabolits_PC2, "PC2"
 
 #### Gràfic 7: Càrregues dels metabòlits a PC2 {#gràfic-7-càrregues-dels-metabòlits-a-PC2}
 
-```{r apartat 5.7}
+```{r apartat_5.7, fig.align='center'}
 #agafem el dataframe creat anteriorment
 PC2_dataframe <- data.frame(Metabolit = metabolits_PC2, Carrega = loads[metabolits_PC2, "PC2"])
 
