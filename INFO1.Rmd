@@ -69,7 +69,7 @@ Ens hem de fixar que de la matriu assay, cada columna és un individu i les file
 Ara cridarem cada element per veure que tot sigui correcte:
 
 ```{r, results='hide'}
-assay(SumExp)  #n'amago el resultat ja que és un output molt gran
+dataset<-assay(SumExp)  #n'amago el resultat ja que és un output molt gran
 ```
 
 ```{r}
@@ -84,28 +84,13 @@ rowData(SumExp)
 
 La informació de les variables metabòlits.
 
-Ara el que farem és dividir en dues mostres, les que són control i les que tenen diagnosticada caquèxia.
 
-```{r}
-caquectic <- SumExp[, SumExp$Muscle.loss == "cachexic"]
-control <- SumExp[, SumExp$Muscle.loss == "control"]
-control
-caquectic
-```
-
-Per accedir posteriorment a les dades de cada subgrup farem servir: 
-```{r}
-assays(caquectic)$counts   
-assays(control)$counts
-```
 # 2.1 EXPLORACIÓ DE LES DADES - INFORMACIÓ BÀSICA
 
 Ja ho hem vist força quan hem muntat SummarizedExperiment però anem a veure com s'estructuren, si hi ha missing values, etc.
 
 ```{r}
 dim(SumExp)
-dim(caquectic)
-dim(control)
 ```
 
 Tenim 63 files i 77 columnes.
@@ -113,15 +98,11 @@ Tenim 63 files i 77 columnes.
 ```{r}
 head(colData(SumExp))
 ```
-
 Veiem l'inici de les metadades.
 
 Abans de seguir, mirem si hi ha missing values.
-
 ```{r}
-any(is.na(x))
-any(is.na(caquectic))
-any(is.na(control))
+any(is.na(dataset))
 ```
 
 No n'hi han pel que de moment podem seguir endavant.
@@ -130,12 +111,16 @@ Ho he recomprovat a tots els grups per hi havia hagut errors en la creació d'aq
 Anem a mirar un resum:
 
 ```{r}
-summary(assays(caquectic)$counts)
+summary(dataset)
+sd(dataset)
 ```
+Ens hem de fixar que aquí el resum que ens dona és per cada individu i no cada metabòlit. Si volem veure de cada metabòlit les mateixes dades que l'anterior, podem transposar la matriu.
 
 ```{r}
-summary(assays(control)$counts)
+summary(t(dataset))
+sd(t(dataset))
 ```
+
 Anem a veure-ho gràficament, comparant els caquètics i control.
 
 ```{r}
@@ -157,42 +142,35 @@ Alguns però ja mostren que no varien entre els dos grups, i alguns sí, que és
 Mirem amb un gràfic de densitat:
 
 ```{r}
-x2 <- assay(SumExp, "counts")
-plot(density(x2[, 1]), main = "Metabòlits", xlab = "Expressió", ylab = "Densitat", col = "blue", lwd = 2)
+plot(density(dataset[, 1]), main = "Metabòlits", xlab = "Quantitat de metabòlit", ylab = "Densitat de probabilitat", col = "blue", lwd = 2)
 #generem un bucle per representar tots els metabòlits
-for (i in 2:ncol(x2)) {
-  lines(density(x2[, i]), col = i, lwd = 2)  }
+for (i in 2:ncol(dataset)) {
+  lines(density(dataset[, i]), col = i, lwd = 2)  }
 ```
+Veiem vàries coses: 
+- La primera és una asimetria clara amb cua a la dreta; serà interessant pensar en una transformació logarítmica. 
+- La segona que tenim un pic al voltant de 0, cosa que suggereix que la majoria de metabòlits tenen concentracions baixes en les mostres, amb només alguns altres que tenen concentracions més elevades. 
 
-De nou, molt saturat i poc útil.
-Tot i així, veiem que sí que hi podrien haver valors extrems.
-Podríem plantejar una transformació logarítmica de les dades.
+Tot i així, continua essent un gràfic molt saturat. 
 
+Procedim a fer la transformació logarítmica per intentar guanyar simetria i compactar els valors. 
 ```{r}
-log2<- log2(assays(SumExp)$counts + 1)
-plot(density(log2[, 1]), main = "Metabòlits (log2)", xlab = "Expressió (log2)", ylab = "Densitat", col = "blue", lwd = 2)
+datasetLog2<- log2(assays(SumExp)$counts + 1)
+plot(density(datasetLog2[, 1]), main = "Metabòlits (log2)", xlab = "Expressió (log2)", ylab = "Densitat", col = "blue", lwd = 2)
 #repetim bucle anterior
-for (i in 2:ncol(log2)) {
-  lines(density(log2[, i]), col = i, lwd = 2) 
+for (i in 2:ncol(datasetLog2)) {
+  lines(density(datasetLog2[, i]), col = i, lwd = 2) 
 }
 ```
 
 Encara hi ha una cua a la dreta però els valors estan més centrats.
-Tot i així, encara hi ha valors extrems, cosa a tenir en compte de cares a la normalització dels valors.
-Necessitem un mètode que sigui resistent a aquests; farem servir el de la mediana.
-Primer normalitzarem i després aplicarem la transformació logarítmica, ja que el gràfic post normalització encara suggereix que es podria beneficiar de la logarítmica.
+Tot i així, és possible que encara hi hagi valors extrems i de cares a l'análisi de PCA podria ser beneficiós una normalització i escala z-score. 
+
 
 ```{r}
-# Normalització per mediana
-norm_mediana <- apply(assays(SumExp)$counts, 2, median, na.rm = TRUE)  # Calcula la mediana per cada mostra
-dataset_normalitzat <- assays(SumExp)$counts / norm_mediana * median(norm_mediana)  # Normalitza les dades
-plot(density(dataset_normalitzat[, 1]), main = "Metabòlits normalitzats", xlab = "Expressió (log2)", ylab = "Densitat", col = "blue", lwd = 2)
-
-#repetim bucle anterior
-for (i in 2:ncol(dataset_normalitzat)) {
-  lines(density(dataset_normalitzat[, i]), col = i, lwd = 2) 
-}
-log2_dataset_normalitzat<- log2(dataset_normalitzat + 1)  
+# Normalització z score
+# Aplica la normalització z-score als valors log-transformats
+log2_dataset_normalitzat <- scale(datasetLog2, center = TRUE, scale = TRUE)
 ```
 
 # 2.2 ANÀLISI DE PCA
@@ -201,38 +179,58 @@ Fins ara hem estat intentant fer representació gràfica i anàlisi de 63 metab�
 L'anàlisi de PCA en permetrà reduir aquesta gran dimensió de les dades i combinar les variables per generar les components principals, no perdent excessiva informació en el procés.
 A més, esperem que així poguem identificar diferents patrons segons si pertanyen al grup de control o caquèxia.
 
-Comencem per escalar les nostres dades i centrar-les.
 
 ```{r}
-x3<-scale(t(log2_dataset_normalitzat), center = TRUE, scale = TRUE)
-#transposem per poder tenir els metabòltis a columnes. 
-PCA_calcul <- prcomp(x3, center = TRUE, scale. = TRUE)
+PCA_calcul <- prcomp(t(log2_dataset_normalitzat), center = TRUE, scale. = TRUE)
 summary(PCA_calcul)
+#PCA_calcul$x
 ```
-
+El resultat no és gaire encoratjador i veiem que la PC1 té només el 10% de la variabilitat, PC2 un 8$, pel que puja acumulat al 18%, i si incloem la tercera, puja l'acumulada fins al 24.8%. 
 Una altra manera de visualitzar-ho seria fent servir el paquet de mixOmics:
 
 ```{r}
 library(mixOmics)
-PCA_tune<-tune.pca(x3, ncomp=10, scale=FALSE)
+PCA_tune<-tune.pca(t(log2_dataset_normalitzat), ncomp=10, scale=FALSE)
 plot(PCA_tune)
 ```
+En el gràfic veiem que el colze se situa amb les PC1 i PC2. 
 
-Veiem en el resultat que el PCA deixa molt a desitjar: la PC1 explica un 38% de la variància, la PC2 6.6% i la PC3 6%.
-No arribem a un \~70% fins a la PC8!.
-Amb la visualització de gràfic, podríem dir que ens podríem limitar a agafar fins a la segona o tercera component (això sí, tenint en compte que això implica que *NOMÉS* tindrem el 50% de la variància explicada) La primera component, òbviamen reté la màxima variabilitat de les dades.
-Anem a mirar les càrregues:
 
 ```{r}
-#seleccionem la variable dins de PCA_tune
-loads<-PCA_calcul$rotation
-loads2<-PCA_tune$loadings
-loads2
-loads
+# Carregar les biblioteques necessàries
+library(ggplot2)
+
+# Agafar les coordenades de les components principals
+coord <- PCA_calcul$x
+
+# Obtenir les coordenades dels components principals
+PCA_resultat <- as.data.frame(coord)
+
+# Afegir la variable Muscle_loss del SummarizedExperiment a la taula de resultats PCA
+PCA_resultat$Muscle_loss <- colData(SumExp)$Muscle.loss  # Afegeix les etiquetes de Muscle loss
+
+# Gràfic de PCA
+ggplot(PCA_resultat, aes(x = PC1, y = PC2, color = Muscle_loss)) +
+  geom_point(shape = 17) +  # Utilitzant triangles com a símbols
+  theme_minimal() +
+  labs(title = "Anàlisi de Components Principals", x = "PC1", y = "PC2")
+
 ```
+Al gràfic no sembla que hi hagi diferències marcades entre els dos grups, en aquests dos components principals. Pot ser que no n'hi hagin o bé que hi ha una gran variabialitat encara entre els metabòlits que ens enmascara poder veure diferències entre grups. 
+podríem veure que potser sí que hi ha diferències entre els dos grups: caquèctic i control. 
+Tot i així, ho acabarem de mirar amb t-test: 
+```{r}
+t_test_PC1 <- t.test(PC1 ~ Muscle_loss, data = PCA_resultat)
+print(t_test_PC1)
+t_test_PC2 <- t.test(PC2 ~ Muscle_loss, data = PCA_resultat)
+print(t_test_PC2)
+```
+Conclusions
+PC1: No s'observa una diferència significativa entre pacients caquèctics i controls en relació a la primera component principal. Això indica que, en termes de variabilitat relacionada amb PC1, els dos grups són similars.
+
+PC2: S'observa una diferència significativa, la qual cosa pot indicar que els metabòlits que contribueixen a aquesta component principal són diferents entre els dos grups. Això podria suggerir que hi ha un patró metabòlic diferent entre pacients caquèctics i controls que es reflecteix en PC2.
 
 Ara veiem de cada metabòlit, quina contribució té a cada component.
-
 ```{r}
 # Gràfic de càrregues per a tots els metabòlits en PC1 i PC2
 plot(loads[, 1], loads[, 2], 
@@ -242,44 +240,66 @@ plot(loads[, 1], loads[, 2],
      pch = 19, col = "purple")
 text(loads[, 1], loads[, 2], labels = rownames(loads), pos = 4, cex = 0.5)
 ```
-
-## OBVIABLE
-
-Un segon gràfic per veure les càrregues dels metabòlits els components principals.
+Anem a mirar les càrregues de PC2 per veure quins metabòlits tenen més pes en aquesta:
 
 ```{r}
-library(factoextra)
-plot1<-fviz_pca_var(PCA_calcul, 
-              col.var = "cadetblue4", 
-              arrows = FALSE,    
-              label = "var",   
-              addEllipses = FALSE,
-             labelsize=2,
-             repel = TRUE
-) +
-  ggtitle("Pes dels Metabòlits a PC1 i 2") 
-plot1
+loads<-PCA_calcul$rotation
+# Ordenar les càrregues en PC2 en funció del valor absolut per identificar els més influents
+PC2_loads <- sort(abs(loads[, "PC2"]), decreasing = TRUE)
+metabolits_PC2 <- names(PC2_loads[1:10]) # Agafem els 10 primers metabòlits més rellevants
+
+# Mostrem els metabòlits i els valors de les càrregues en PC2
+data.frame(Metabolit = metabolits_PC2, Carrega_PC2 = loads[metabolits_PC2, "PC2"])
 ```
 
-## FI OBVIABLE
+Gràfic de barres:
+```{r}
+# Visualització de les càrregues de PC2
+library(ggplot2)
 
-## METABÒLITS MÉS INFLUENTS
+# Convertir a un data frame
+pc2_loads_df <- data.frame(Metabolit = metabolits_PC2, Carrega = loads[metabolits_PC2, "PC2"])
 
-Ara seleccionarem de les 3 principals components, els metabòlits amb més pes d'aquestes.
-
-```{R}
-#primer selecciono les 3 primeres components
-PCAs <- loads[, 1:3]
-PCAs
+# Gràfic de barres
+ggplot(pc2_loads_df, aes(x = reorder(Metabolit, Carrega), y = Carrega)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  # Girar l'eix X
+  labs(title = "Càrregues de Metabòlits en PC2",
+       x = "Metabolit",
+       y = "Càrrega en PC2") +
+  theme_minimal()
 ```
+Fem t-test 
 
 ```{r}
-#ara 
-PC1_top <- PCAs[order(abs(PCAs[, 1]), decreasing = TRUE), ]
-PC2_top <- PCAs[order(abs(PCAs[, 2]), decreasing = TRUE), ]
-PC3_top <- PCAs[order(abs(PCAs[, 3]), decreasing = TRUE), ]
-PC1_top
-PC2_top
-PC3_top
-head(PC1_top, 10)
+# Obtenir les càrregues del PCA
+loads <- PCA_calcul$rotation
+
+# Obtenir els noms dels metabòlits amb càrregues en PC2
+metabolits_PC2 <- rownames(loads[order(abs(loads[, "PC2"]), decreasing = TRUE), ])
+
+# Escollir els primers 10 metabòlits més influents en PC2
+top_metabolits <- metabolits_PC2[1:10]
+
+# Crear un data frame amb els nivells dels metabòlits i les categories de Muscle_loss
+metabolit_data <- data.frame(Muscle_loss = columnesMeta$`Muscle loss`)
+
+# Afegir cada metabolit al data frame, per cada pacient
+for (metabolit in top_metabolits) {
+  metabolit_data[[metabolit]] <- dataset[metabolit, ]
+}
+
+# Realitzar el t-test de Welch per cada metabolit
+results <- lapply(top_metabolits, function(metabolit) {
+  t.test(metabolit_data[[metabolit]] ~ metabolit_data$Muscle_loss, var.equal = FALSE)
+})
+
+# Mostrar els resultats
+for (i in 1:length(top_metabolits)) {
+  cat("Resultats per", top_metabolits[i], ":\n")
+  print(results[[i]])
+  cat("\n")
+}
 ```
+Amb aquests resultats de PC2, veiem que hi ha diferències estadísticament significatives entre 9 dels 10 metabòlits revisats. 
+Veient algun d'aquests, per exemple la creatinina, podria tenir sentit que estigués més elevada en pacients caquèctics, ja que a part d'indicar fracàs renal també s'eleva en casos de destrucció muscular (i per tant, situacions que porten a la caquèxia).

@@ -1,0 +1,44 @@
+---
+title: "PEC1 -ENTREGA"
+author: "Ànnia"
+date: "2024-11-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PEC 1
+
+## TAULA DE CONTINGUTS
+
+-   [RESUM EXECUTIU](#resum-executiu)
+-   [OBJECTIUS DE L'ESTUDI](#objectius-de-lestudi)
+-   [MATERIALS I MÈTODES](#materials-i-mètodes)
+-   [RESULTATS](#resultats)
+-   [DISCUSSIÓ I LIMITACIONS I CONCLUSIONS DE L'ESTUDI](#discussio-i-limitacions-i-conclusions-de-lestudi)
+
+## RESUM EXECUTIU {#resum-executiu}
+
+## OBJECTIUS DE L'ESTUDI {#objectius-de-lestudi}
+
+Amb el dataset proporcionat de human_cachexia, no tenim massa informació exceptuant que s'han analitzat 77 mostres d'orina determinant el nivell de 63 metabòlits diferents. La principal diferènicia rau en que una part de les mostres prové de pacients caquèctics i l'altra meitat de pacients control.
+
+Per tant, en el meu cas, he aprofitat per plantejar-me: - H0: no hi ha diferències en els nivells de metabòlits en orina entre els pacients control i els caquèctics.
+
+-   H1: sí que hi ha diferències.
+
+## MATERIALS I MÈTODES {#materials-i-mètodes}
+
+S'ha realitzat un anàlisi metabolòmic en una mostra de 77 pacients, que amb el resum facilitat a **Data_catalog** s'enten que una part d'aquests són pacients neoplàsics. La mostra conté 47 caquèctics i 30 de control i no tenim més dades al respecte (ni sexe, dades antropomètriques, tipus de neoplàsia, etc). Consta que la mostra de pacients és de Evans et al., 2008 però no he pogut identificar l'article d'on prové. Les mostres recollides són d'orina i s'ha analitzat la presència de 63 metabòlits diferents. El dataset ha estat facilitat per l'assignatura d'*Ànàlisi de Dades Òmiques* de la Universitat Oberta de Catalunya (UOC), que especifica que el dataset prové de "specmine.datasets" dels paquets de R.
+
+El conjunt de dades s'ha importat al programari R i s'ha creat l'element *Summarized Experiment* per facilitar la manipulació de dades. En aquest es divideixen les dades en: - El dataset de metabòlits: que hi ha la concentració de 62 metabòlits. - Les metadades que inclouen: un identificador del pacient i la variable de pèrdua muscular muscle_loss; aquesta última ens permet dividir els pacients en dues categories: caquèctics i controls. - La informació dels noms dels metabòlits .
+
+Una vegada visualitzades gràficament les dades, s'ha aplicar una transformació logarítmica per reduir la variabilitat de les dades i també s'ha aplicat un procés de normalització i estandarització per poder comparar-les i fer l'anàlisi posterior.
+
+S'ha realitzar una *Anàlisi de Components Principals (PCA)*
+
+## RESULTATS {#resultats}
+
+## DISCUSSIÓ I LIMITACIONS I CONCLUSIONS DE L'ESTUDI
