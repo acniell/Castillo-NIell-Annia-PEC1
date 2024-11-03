@@ -1,7 +1,6 @@
 ---
-title: "PEC1 -ENTREGA"
-author: "Ànnia"
-date: "2024-11-02"
+title: "ANÀLISI DE DADES ÒMIQUES - PEC1"
+author: "Ànnia Castillo Niell"
 output: html_document
 ---
 
@@ -13,32 +12,396 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## TAULA DE CONTINGUTS
 
+-   [INTRODUCCIÓ](#introducció)
 -   [RESUM EXECUTIU](#resum-executiu)
 -   [OBJECTIUS DE L'ESTUDI](#objectius-de-lestudi)
 -   [MATERIALS I MÈTODES](#materials-i-mètodes)
 -   [RESULTATS](#resultats)
 -   [DISCUSSIÓ I LIMITACIONS I CONCLUSIONS DE L'ESTUDI](#discussio-i-limitacions-i-conclusions-de-lestudi)
+-   [ANNEX: CODI DE R I GRÀFICS](#annex-codi-de-r-i-gràfics)
+  -   [1. IMPORTAR I CARREGAR LES DADES](#importar-i-carregar-les-dades)
+  -   [2. EXPLORACIÓ MÍNIMA ORIENTATIVA](#exploració-mínima-orientativa)
+  -   [3. CREACIÓ DEL SUMMARIZED EXPERIMENT](#creació-del-summarized-experiment)
+  -   [4. EXPLORACIÓ DEL SUMMARIZED EXPERIMENT (SE)](#exploració-del-summarized-experiment-se)
+  -   [5. ANÀLISI DE PCA](#anàlisi-de-pca)
+      -   [5.1 CÀRREGUES DELS METABOLITS A PC1 I PC2](#càrregues-dels-metabòlits-a-pc1-i-pc2)
+
+
+
+## INTRODUCCIÓ {#introducció}
+
+Aquesta PEC està estructurada de tal manera que en els primers apartats trobareu explicat el que s'ha realitzat en l'anàlisi de les dades, i al final, per evitar embrutar la visualització, hi podreu trobar el codi de R amb les sortides corresponents i gràfics.
+L'enllaç al respositori de Github és el següent:
+https://github.com/acniell/Castillo-Niell-Annia-PEC1.git
+
 
 ## RESUM EXECUTIU {#resum-executiu}
 
+S'ha realitzat un anàlisi metabolòmic a una mostra de 77 pacients amb l'objectiu de detectar si hi ha diferències en els nivells de metabòlits en orina entre els pacients caquèctics i un grup control. S'ha aplicat una *Anàlisi de Components Principals* i s'ha avaluat la variabilitat dels 63 metabòlits entre els dos grups.
+
+Gràficament s'observen certes diferències entre els dos grups, però estadísticament significatives a nivell de la segona component principal (PC2). Avaluant les càrregues de PC2, s'han seleccionat els 10 metabòlits amb més pes i s'han trobat diferències estadísticament significatives entre el grup de caquèctics i el control en 9 de 10.
+
+Aquest anàlisi presenta vàries limitacions, com ara manca d'informació dels pacients inclosos, i altres factors que podrien causar una gran variabilitat metabòlica entre els individus. Tot i així, amb els resultats obtinguts, es podria suggerir futures línies d'investigació orientats a identificar biomarcadors fiables i precoços per a la detecció de caquèxia en pacients oncològics.
+
 ## OBJECTIUS DE L'ESTUDI {#objectius-de-lestudi}
 
-Amb el dataset proporcionat de human_cachexia, no tenim massa informació exceptuant que s'han analitzat 77 mostres d'orina determinant el nivell de 63 metabòlits diferents. La principal diferènicia rau en que una part de les mostres prové de pacients caquèctics i l'altra meitat de pacients control.
+Amb el dataset proporcionat de human_cachexia, no tenim massa informació exceptuant que s'han analitzat 77 mostres d'orina determinant el nivell de 63 metabòlits diferents. La principal diferènicia rau en què una part de les mostres prové de pacients caquèctics i l'altra meitat de pacients control.
 
-Per tant, en el meu cas, he aprofitat per plantejar-me: - H0: no hi ha diferències en els nivells de metabòlits en orina entre els pacients control i els caquèctics.
+Per tant, en el meu cas, he decidit plantejar-me:
+
+-   H0: no hi ha diferències en els nivells de metabòlits en orina entre els pacients control i els caquèctics.
 
 -   H1: sí que hi ha diferències.
 
 ## MATERIALS I MÈTODES {#materials-i-mètodes}
 
-S'ha realitzat un anàlisi metabolòmic en una mostra de 77 pacients, que amb el resum facilitat a **Data_catalog** s'enten que una part d'aquests són pacients neoplàsics. La mostra conté 47 caquèctics i 30 de control i no tenim més dades al respecte (ni sexe, dades antropomètriques, tipus de neoplàsia, etc). Consta que la mostra de pacients és de Evans et al., 2008 però no he pogut identificar l'article d'on prové. Les mostres recollides són d'orina i s'ha analitzat la presència de 63 metabòlits diferents. El dataset ha estat facilitat per l'assignatura d'*Ànàlisi de Dades Òmiques* de la Universitat Oberta de Catalunya (UOC), que especifica que el dataset prové de "specmine.datasets" dels paquets de R.
+S'ha realitzat un anàlisi metabolòmic en una mostra de 77 pacients, que amb el resum facilitat a *Data_catalog* s'entén que una part d'aquests són pacients neoplàsics. La mostra conté 47 caquèctics i 30 de control i no tenim més dades al respecte (ni sexe, dades antropomètriques, tipus de neoplàsia, etc). Consta que la mostra de pacients és de Evans et al., 2008 però no he pogut identificar l'article d'on prové. Les mostres recollides són d'orina i s'ha analitzat la presència de 63 metabòlits diferents. El dataset ha estat facilitat per l'assignatura d'*Ànàlisi de Dades Òmiques* de la *Universitat Oberta de Catalunya (UOC)*, que especifica que el dataset prové de *"specmine.datasets"* dels paquets de R.
 
-El conjunt de dades s'ha importat al programari R i s'ha creat l'element *Summarized Experiment* per facilitar la manipulació de dades. En aquest es divideixen les dades en: - El dataset de metabòlits: que hi ha la concentració de 62 metabòlits. - Les metadades que inclouen: un identificador del pacient i la variable de pèrdua muscular muscle_loss; aquesta última ens permet dividir els pacients en dues categories: caquèctics i controls. - La informació dels noms dels metabòlits .
+El conjunt de dades s'ha importat al programari R i s'ha creat l'element *Summarized Experiment* per facilitar la manipulació de dades. En aquest es divideixen les dades en:
+
+\- El dataset de metabòlits: que hi ha la concentració de 62 metabòlits.
+
+\- Les metadades que inclouen: un identificador del pacient i la variable de pèrdua muscular muscle_loss; aquesta última ens permet dividir els pacients en dues categories: caquèctics i controls.
+
+\- La informació dels noms dels metabòlits .
 
 Una vegada visualitzades gràficament les dades, s'ha aplicar una transformació logarítmica per reduir la variabilitat de les dades i també s'ha aplicat un procés de normalització i estandarització per poder comparar-les i fer l'anàlisi posterior.
 
-S'ha realitzar una *Anàlisi de Components Principals (PCA)*
+[Veure Gràfic 1: boxplot comparatiu de cada metabòlit entre caquèctic i control](#gràfic-1-boxplot-comparatiu-de-cada-metabòlit-entre-caquèctic-i-control) 
+
+[Veure Gràfic 2: Gràfic de densitat i distribució dels metabòlits](#gràfic-2-gràfic-de-densitat-i-distribució-dels-metabòlits)
+
+S'ha realitzat una *Anàlisi de Components Principals (PCA)* per explorar la varabilitat de les dades i veure si hi ha diferències entre el grup de caquèctics i control. S'ha estimat el nombre òptim de components principals (s'ha utilitzat la primera component princpal (PC1) i la segona (PC2) finalment) i s'han representat gràficament per veure la seva distribució.
+
+[Veure Gràfic 4: Variància explicada per cada PC](#gràfic-4-variància-explicada-per-cada-PC) 
+
+[Veure Gràfic 5: Representació gràfica de PC1 i PC2](#gràfic-5-representació-gràfica-de-PC1-i-PC2) 
+
+[Veure Gràfic 6: Càrregues de PC1 i PC2](%7B#gràfic-6-càrregues-de-PC1-i-PC2)
+
+Posteriorment s'ha analitzat si hi ha diferències significatives entre els dos grups (caquèctics/controls) amb *test t de Welch*. S'han analitzat els 10 metabòlits amb les càrregues més elevades de PC2, que ha estat on hem trobat diferències significatives entre els dos grups. Finalment S'ha aplicat de nou un *t test de Welch* d'aquests 10 metabòlits per determinar si les diferents concentracions entre els dos grups eren estadísticament significatives.
+
+[Veure Gràfic 7: Càrregues dels metabòlits a PC2](#gràfic-7-càrregues-dels-metabòlits-a-PC2)
 
 ## RESULTATS {#resultats}
 
-## DISCUSSIÓ I LIMITACIONS I CONCLUSIONS DE L'ESTUDI
+La realització de PCA ha permès veure la variabilitat dels metabòlits entre els dos grups de pacients: caquèctics i controls. La representació gràfica dels PCA sí que mostra certa possible separació entre els dos grups. PC1 explica una proporcio significativa de la variabilitat, amb un colze que gràficament s'observa entre PC1 i PC2. El *test t de Welch* aplicat per veure si hi havia diferències significatives de PC1 i PC2 entre els dos grups, no va ser significativa per PC1 però sí per PC2. Tot i així, entent que treballem amb PC2, aquestes diferències trobades poden ser molt petites i insuficients per diferenciar de forma efectiva els dos grups. S'han analitzat les càrregues de PC2 per veure els metabòlits amb més influència, i s'ha aplicat un *t test de Welch* per a cada un d'ells, mostrant que 6 dels 10 metabòlits presenten diferències estadísticament significatives. Aquest resultat podria suggerir que alguns metabòlits podrien ser biomarcadors per identificar els pacient amb caquèxia, tenint en compte però les limitacions de l'estudi (veure a continuació).
+
+## DISCUSSIÓ I LIMITACIONS I CONCLUSIONS DE L'ESTUDI {#discussio-i-limitacions-i-conclusions-de-lestudi}
+
+Després de l'anàlisi realitzat el que sobretot encara predomina és la variabilitat entre els dos grups de pacients, cosa que dificulta la identificació d'un patró clar, i possiblement evidencia que el procés de caquèxia afecta moltes mes vies que encara no estan identificades, incloses ni valorades en aquest context.
+
+El fet d'haver trobat diferències estadísticament significatives entre els dos grups a nivell de PC2 pot suggerir que hi ha podria haver processos metabòlics que estiguin estretament lligats a la caquèxia.
+
+Per exemple: el succinat és un metabòlit que participa en el cicle de Krebs per a la creació final d'energia (ATP) i aigua. S'ha vist que en pacients en situació de caquèxia poden tenir nivells més elevats. Això també quadraria amb una glucosa més elevada, ja que els pacients amb caquèxia (el pacient estrella és el pacient amb anorèxia) tenen un estat proinflamatori constant que genera una resistència perifèrica a la insulina i que per tant, disminueix la captació de glucosa intracel·lular. Per últim, el lactat també apunta cap a aquesta direcció: és el biomarcador estrella que es fa servir en medicina com a indicador d'un canvi del metabolisme aeròbic a anaeròbic (per múltiples motius). En el pacients caquèctics, amb un augment de la glucosa sanguínia, també hi ha un augment de la glicòlisi anaeròbica, que en conseqüència augmenta els nivells de lactat. Aquests biomarcadors però, són molt genèrics i també es podrien trobar elevats per exemple en un pacient crític sèptic.
+
+Aquests resultats no són definitius i poden estar subjectes a altres factors que actualment potser no tenim controlats: no sabem el tipus de neoplàsia dels pacients (les pancreàtiques són molt més agressives i segurament porten a nivell de caquèxia major), tipus de dieta dels pacients, nivell d'activitat física, règim de tractament oncoespecífic, sexe, etc.
+
+Tot i així, els resultats obtinguts, poden suggerir futures línies d'investigació, ja que si es pogués trobar un patró que ho suggerís de forma precoç, i s'una manera tan poc invasiva com una mostra d'orina, en un futur es podrien engegar programes per a la prevenció de la caquèxia en pacients hematooncològics i així aconseguit millor tolerància a les teràpies antineoplàsiques i millors resultats de remissió.
+
+## ANNEX: CODI DE R I GRÀFICS {#annex-codi-de-r-i-grafics}
+
+### 1. IMPORTAR I CARREGAR LES DADES {#importar-i-carregar-les-dades}
+
+Importem el dataset de cachexia. Hem descarregat el paquet de github i ara el pugem localment al nostre entorn
+
+```{r apartat_1, results='hide', message=FALSE}
+getwd() #M'asseguro d'estar trebllant on desitjo. 
+library(readr)
+human_cachexia <- read_csv("2024-Cachexia/human_cachexia.csv")
+View(human_cachexia)
+```
+
+### 2. EXPLORACIÓ MÍNIMA ORIENTATIVA {#exploració-mínima-orientativa}
+
+Ara a nem a veure l'aspecte del nostre dataset:
+
+```{r apartat_2, results='hide'}
+head(human_cachexia)
+class(human_cachexia)
+names(human_cachexia)
+str(human_cachexia)
+dim(human_cachexia)
+```
+
+Veiem que té les dues primeres columnes que són els ID i a quin grup pertany la mostra (caquèctic o no), i posteriorment la resta són quantificació dels diferents metabolomes en cada pacient. Té unes dimencions de 77x65.
+
+### 3. CREACIÓ DEL SUMMARIZED EXPERIMENT {#creació-del-summarized-experiment}
+
+Per poder crear el nostre SummarizedExperiment ens hem d'assegurar que tenim tot el necessari instal·lat (i per posteriorment):
+
+```{r apartat_3.1, results='hide', message=FALSE}
+library(GEOquery)
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+suppressWarnings({
+    BiocManager::install("SummarizedExperiment")
+    BiocManager::install("mixOmics")
+})
+library(SummarizedExperiment)
+library(Biobase)
+library(ggplot2)
+```
+
+El que farem doncs, amb les dades que tenim, és filtrar que són metadades i què és la matriu de dades, i tot això guardar-ho en un SummarizedExperiment.
+
+```{r apartat_3.2}
+x<-as.matrix(human_cachexia[, -c(1, 2)]) #elimino les dues primeres columnes. 
+columnesMeta <- human_cachexia[, 1:2] #creem les metadades
+#els noms de les columnes
+colnames(columnesMeta) <- c("ID pacient", "Muscle loss")
+rownames(x) <- columnesMeta$`ID pacient` #aparellem que la columna d'identificador ara sigui el nom de cada fila
+
+#Creem l'element que s'ha demanat, SummarizedExperiment
+SumExp <- SummarizedExperiment(
+    assays = list(counts = t(x)),  # Transposem perquè les mostres/individus siguin columnes
+    colData = DataFrame(columnesMeta), #incloem les metadades
+    rowData = DataFrame(Variable = colnames(x))  #els noms dels metabòlits analitzats 
+)
+SumExp
+```
+
+Ens hem de fixar que de la matriu assay, cada columna és un individu i les files són els metabòlits. Ara cridarem cada element per veure que tot sigui correcte, és a dir, a mode comprovació que s'han creat els elements correctament:
+
+```{r apartat_3.3, results='hide'}
+#Amago el resultat ja que és un output molt gros.
+dataset<-assay(SumExp)  
+dataset
+```
+
+Aquestes són les metadades
+
+```{r apartat_3.4}
+colData(SumExp)
+```
+
+I la informació de les dades dels metabòlits:
+
+```{r apartat_3.5}
+rowData(SumExp)
+```
+
+### 4. EXPLORACIÓ DEL SUMMARIZED EXPERIMENT (SE) {#exploració-del-summarized-experiment-se}
+
+*En aquest apartat hi ha l'exploració del SE així com la transformació i normalització de les dades.*
+
+Ja ho hem vist força quan hem muntat SummarizedExperiment però anem a veure com s'estructuren, si hi ha missing values, etc.
+
+```{r apartat_4.1}
+#la dimensió
+dim(SumExp)
+```
+
+Tenim 63 files i 77 columnes.
+
+A continuació veiem l'inici de les metadades
+
+```{r apartat_4.2}
+head(colData(SumExp))
+```
+
+Abans de seguir, mirem si hi ha missing values.
+
+```{r apartat_4.3}
+any(is.na(dataset))
+```
+
+No n'hi han pel que de moment podem seguir endavant.
+
+Anem a mirar un resum:
+
+```{r apartat_4.4, results='hide'}
+#amago resultats per gran output
+summary(dataset)
+sd(dataset)
+```
+
+Ens hem de fixar que aquí el resum que ens dona és per cada individu i no cada metabòlit. Si volem veure de cada metabòlit les mateixes dades que l'anterior, podem transposar la matriu.
+
+```{r apartat_4.5, results='hide'}
+#amago resultats per gran output
+summary(t(dataset))
+sd(t(dataset))
+```
+
+Anem a veure-ho gràficament, comparant els caquètics i control.
+
+#### Gràfic 1: boxplot comparatiu de cada metabòlit entre caquèctic i control {#gràfic-1-boxplot-comparatiu-de-cada-metabòlit-entre-caquèctic-i-control}
+
+```{r apartat_4.6}
+par(mfrow=c(2, 4))  
+for (i in 1:63) {  
+  boxplot(x[, i] ~ columnesMeta$`Muscle loss`,
+          main = colnames(x)[i],  # Nom del metabolit
+          xlab = "Pèrdua muscular",
+          ylab = "Expressió",
+          col = c("cadetblue3", "coral"),
+          border ="darkgreen")
+}
+par(mfrow=c(1, 1)) 
+```
+
+Això és complicat i poc útil perquè he hagut de generar 63 gràfics per veure com es comporta cada metabòlit en funció de si el pacient està caquèctic o no. Alguns però ja mostren que no varien entre els dos grups, i alguns sí, que és el que anirem a buscar.
+
+Mirem amb un gràfic de densitat com es distribueixen les dades:
+
+#### Gràfic 2: Gràfic de densitat i distribució dels metabòlits {#gràfic-2-gràfic-de-densitat-i-distribució-dels-metabòlits}
+
+```{r apartat_4.7}
+plot(density(dataset[, 1]), main = "Metabòlits", xlab = "Quantitat de metabòlit", ylab = "Densitat de probabilitat", col = "blue", lwd = 2)
+#generem un bucle per representar tots els metabòlits
+for (i in 2:ncol(dataset)) {
+  lines(density(dataset[, i]), col = i, lwd = 2)  }
+```
+
+Veiem vàries coses: - La primera és una asimetria clara amb cua a la dreta; serà interessant pensar en una transformació logarítmica. - La segona que tenim un pic al voltant de 0, cosa que suggereix que la majoria de metabòlits tenen concentracions baixes en les mostres, amb només alguns altres que tenen concentracions més elevades.
+
+Tot i així, continua essent un gràfic molt saturat.
+
+Procedim a fer la transformació logarítmica per intentar guanyar simetria i compactar els valors.
+
+#### Gràfic 3: Gràfic de densitat i distribució dels metabòlits amb la transformació logarítmica {#gràfic-3-gràfic-de-densitat-i-distribució-dels-metabòlits-amb-la-transformació-logarítmica}
+
+```{r apartat_4.8}
+datasetLog2<- log2(assays(SumExp)$counts + 1)
+plot(density(datasetLog2[, 1]), main = "Metabòlits (log2)", xlab = "Expressió (log2)", ylab = "Densitat", col = "blue", lwd = 2)
+#repetim bucle anterior
+for (i in 2:ncol(datasetLog2)) {
+  lines(density(datasetLog2[, i]), col = i, lwd = 2) 
+}
+```
+
+Encara hi ha una cua a la dreta però els valors estan més centrats. Tot i així, és possible que encara hi hagi valors extrems i de cares a l'análisi de PCA podria ser beneficiós una normalització i escala z-score.
+
+```{r apatat_4.9}
+# Normalització z score
+# Aplica la normalització z-score als valors log-transformats
+log2_dataset_normalitzat <- scale(datasetLog2, center = TRUE, scale = TRUE)
+```
+
+### 5. ANÀLISI DE PCA {#anàlisi-de-pca}
+
+Fins ara hem estat intentant fer representació gràfica i anàlisi de 63 metabòlits diferents (i 77 entrades de cada un), cosa molt farregosa i que ens dificulta fer l'anàlisi de dades. L'anàlisi de PCA en permetrà reduir aquesta gran dimensió de les dades i combinar les variables per generar les components principals, no perdent excessiva informació en el procés. A més, esperem que així poguem identificar diferents patrons segons si pertanyen al grup de control o caquèxia.
+
+```{r apartat_5.1}
+#té un output molt gran, pel que queda amagat el resultat per no embrutar. 
+PCA_calcul <- prcomp(t(log2_dataset_normalitzat))
+summary(PCA_calcul)
+```
+```{r, results='hide'}
+#amago output per gran sortida
+PCA_calcul$x
+```
+
+El resultat no és gaire encoratjador i veiem que la PC1 té només el 11% de la variabilitat, PC2 un 7.7%, pel que puja acumulat al 19%, i si incloem la tercera, puja l'acumulada fins al 25.9%. Una altra manera de visualitzar-ho seria fent servir el paquet de mixOmics:
+
+#### Gràfic 4: Variància explicada per cada PC {#gràfic-4-variància-explicada-per-cada-PC}(#variància-pca)
+
+```{r apartat_5.2, results='hide', message=FALSE}
+library(mixOmics)
+PCA_tune<-tune.pca(t(log2_dataset_normalitzat), ncomp=10, scale=FALSE) #triem que es vegin només les primeres 10 components
+plot(PCA_tune)
+```
+
+Al gràfic veiem que el colze se situa amb les PC1 i PC2.
+
+Representem les dues primeres components gràficament.
+
+#### Gràfic 5: Representació gràfica de PC1 i PC2 {#gràfic-5-representació-gràfica-de-PC1-i-PC2}
+
+```{r apartat_5.3, warning = FALSE}
+#les coordenades de les components principals
+coord <- PCA_calcul$x
+#Ho passem a format dataframe
+PCA_resultat <- as.data.frame(coord)
+
+#Afegim la variable Muscle_loss de SE a la taula de resultats PCA
+PCA_resultat$Muscle_loss <- colData(SumExp)$Muscle.loss  
+
+suppressMessages({
+  ggplot(PCA_resultat, aes(x = PC1, y = PC2, color = Muscle_loss)) +
+    geom_point(shape = 17) +
+    theme_minimal() +
+    labs(title = "Anàlisi de Components Principals", x = "PC1", y = "PC2")
+})
+```
+
+El gràfic podria insinuar que hi hagi diferències marcades entre els dos grups en aquests dos components principals, especialment veient que hi ha uns metabòlits de distribució més superior i d'altres més inferior. O bé també podria ser que no n'hi hagin o bé que hi ha una gran variabialitat encara entre els metabòlits que ens enmascara poder veure diferències entre grups.
+
+Anem a mirar-ho amb t test de Welch
+
+```{r apartat_5.4}
+t_test_PC1 <- t.test(PC1 ~ Muscle_loss, data = PCA_resultat)
+t_test_PC1
+t_test_PC2 <- t.test(PC2 ~ Muscle_loss, data = PCA_resultat)
+t_test_PC2
+```
+
+Veiem amb aquests resultats que: - PC1: no s'observa una diferència clarament significativa entre els dos grups de pacients (caquèctics i controls) en quant a PC1. Per tant, en termes de variabilitat podríem dir que els dos grups són similars.
+
+-   PC2: sí que veiem una diferència estadísticament significativa entre els dos grups, pel que podríem epnsar que els metabòlits que contribueixen a aquesta component són diferents entre els dos grups. Amb aquest resultat podríem anar a mirar a veure si hi ha algun patró distintiu.
+
+#### 5.1 CÀRREGUES DELS METABÒLITS A PC1 i PC2 {#càrregues-dels-metabòlits-a-pc1-i-pc2}
+
+Ara veiem de cada metabòlit, quina contribució té a cada component.
+
+#### Gràfic 6: Càrregues de PC1 i PC2 {#gràfic-6-càrregues-de-PC1-i-PC2} 
+
+```{r apartat_5.5}
+loads <- PCA_calcul$rotation
+# Gràfic de càrregues per a tots els metabòlits en PC1 i PC2
+plot(loads[, 1], loads[, 2], 
+     xlab = "Càrregues PC1", 
+     ylab = "Càrregues PC2", 
+     main = "Càrregues PC1 i PC2",
+     pch = 19, col = "purple")
+text(loads[, 1], loads[, 2], labels = rownames(loads), pos = 4, cex = 0.5)
+```
+
+Ara mirem de PC2 els metabòlits més influents i una vegada obtinguts els representarem gràficament.
+
+```{r apartat_5.6}
+# Agafem les càrregues de PC2 i les ordenem segons valors absoluts. 
+PC2_loads <- sort(abs(loads[, "PC2"]), decreasing = TRUE)
+metabolits_PC2 <- names(PC2_loads[1:10]) # Agafem els 10 primers metabòlits més rellevants
+data.frame(Metabolit = metabolits_PC2, Carrega_PC2 = loads[metabolits_PC2, "PC2"])
+```
+
+#### Gràfic 7: Càrregues dels metabòlits a PC2 {#gràfic-7-càrregues-dels-metabòlits-a-PC2}
+
+```{r apartat 5.7}
+#agafem el dataframe creat anteriorment
+PC2_dataframe <- data.frame(Metabolit = metabolits_PC2, Carrega = loads[metabolits_PC2, "PC2"])
+
+# Gràfic de barres
+ggplot(PC2_dataframe, aes(x = reorder(Metabolit, Carrega), y = Carrega)) +
+  geom_bar(stat = "identity", fill = "orange") +
+  coord_flip() + 
+  labs(title = "Càrregues dels metabòlits a PC2",
+       x = "Metabolit",
+       y = "Càrrega a PC2") +
+  theme_minimal()
+```
+
+Ara que tenim els 10 metabòlits més influents a PC2, mirarem un per un si hi ha diferències estadísticament significatives entre els dos grups: caquèctics i control. De nou, apliquem un t test per veure-ho:
+
+```{r apartat_5.8}
+# Ajuntem els metabòlits i la variable muscle_loss
+metabolit_data <- data.frame(Muscle_loss = columnesMeta$`Muscle loss`)
+#obrim un bucle per crear els test t a tots els metabòlits
+for (metabolit in metabolits_PC2) {
+  metabolit_data[[metabolit]] <- dataset[metabolit, ]
+}
+
+results <- lapply(metabolits_PC2, function(metabolit) {
+  t.test(metabolit_data[[metabolit]] ~ metabolit_data$Muscle_loss, var.equal = FALSE)
+})
+#segon bucle per imprimir els noms dels metabòlits i saber quins estem comparant
+for (i in 1:length(metabolits_PC2)) {
+  cat(metabolits_PC2[i], ":\n") #el nom del metabòlit i salt de línia
+  print(results[[i]])
+  cat("\n")
+}
+```
+
+Veiem que tenim un resultat estadísticament significatiu a 6 dels 10 metabòlits. Si per exemple ens fixem amb el succinat i la glucosa, podríem raonar el perquè poden existir diferències entre els dos grups: El succinat és un metabòlit que participa en el cicle de Krebs per a la creació final d'energia (ATP) i aigua. S'ha vist que en pacients en situació de caquèxia poden tenir nivells més elevats (degut q la necessitat constant de crear energia quan hi ha un dèficit de la ingesta per exemple). Això també quadraria amb una glucosa més elevada, ja que els pacients amb caquèxia (el pacient estrella és la pacient amb anorèxia nerviosa) tenen un estat proinflamatori constant que genera una resistència perifèrica a la insulina i que per tant, disminueix la captació de glucosa intracel·lular. Per últim, el lactat també apunta cap a aquesta direcció: és el biomarcador estrella que es fa servir en medicina com a indicador d'un canvi del metabolisme aeròbic a anaeròbic (per múltiples motius). En el pacients caquèctics, amb un augment de la glucosa sanguínia, també hi ha un augment de la glicòlisi anaeròbica, que en conseqüència augmenta els nivells de lactat.
